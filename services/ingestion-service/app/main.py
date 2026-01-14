@@ -28,6 +28,7 @@ from .repos import (
     mark_invoice_failed,
     mark_invoice_canceled,
 )
+from app.routes import classify
 
 # Load environment variables
 load_dotenv()
@@ -52,6 +53,8 @@ app = FastAPI(
     description="Document ingestion and OCR processing service",
     version="1.0.0"
 )
+
+app.include_router(classify.router)
 
 # Structured logging helper
 def log_structured(level: str, message: str, **fields: Any):

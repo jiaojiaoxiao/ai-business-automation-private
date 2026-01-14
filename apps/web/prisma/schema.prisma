@@ -51,6 +51,95 @@ model User {
   sessions      Session[]
 }
 
+// 🆕 上传的文档/发票
+model Document {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // 文件信息
+  fileName    String
+  fileType    String   // pdf, jpg, png
+  fileSize    Int
+  fileUrl     String   // Azure Blob Storage URL
+  
+  // OCR状态
+  ocrStatus   String   @default("pending") // pending, processing, completed, failed
+  ocrError    String?
+  
+  // 关联的交易记录
+  transactions Transaction[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("documents")
+  @@index([userId])
+}
+
+// 🆕 交易记录 (OCR识别结果)
+model Transaction {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  documentId      String?
+  document        Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  
+  // OCR识别的基本信息
+  date            DateTime?
+  vendor          String?   // 取引先
+  description     String?   // 摘要
+  amount          Float?    // 金額
+  
+  // 🔍 AI识别的勘定科目
+  accountName     String?   // 勘定科目名 (e.g., "水道光熱費")
+  accountConfidence Float?  // 識別信頼度 (0.0-1.0)
+  
+  // 交易分类
+  direction       String?   // "income" or "expense"
+  category        String?   // 取引区分 (収入/支出)
+  
+  // MF导出相关
+  exportStatus    String    @default("pending") // pending, exported
+  exportedAt      DateTime?
+  mfCsvGenerated  Boolean   @default(false)
+  
+  // 用户确认/修改
+  userConfirmed   Boolean   @default(false)
+  userModified    Boolean   @default(false)
+  confirmedAccount String?  // 用户确认或修改后的勘定科目
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@map("transactions")
+  @@index([userId])
+  @@index([documentId])
+  @@index([date])
+}
+
+// 🆕 MF导出批次记录
+model MfExportBatch {
+  id              String   @id @default(cuid())
+  userId          String
+  
+  // 导出信息
+  fileName        String   // 生成的CSV文件名
+  fileUrl         String?  // 下载URL
+  transactionIds  String[] // 包含的交易ID列表
+  totalCount      Int      // 交易总数
+  
+  // 统计信息
+  startDate       DateTime?
+  endDate         DateTime?
+  totalAmount     Float?
+  
+  createdAt       DateTime @default(now())
+  
+  @@map("mf_export_batches")
+  @@index([userId])
+
 model VerificationToken {
   identifier String
   token      String   @unique
